@@ -23,9 +23,12 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-16 lg:gap-8 mb-24">
           
           <div className="lg:col-span-5 flex flex-col">
-            <Link to="/" className="flex flex-col group w-fit">
-              <span className="font-serif text-3xl font-semibold tracking-wider text-bmq-ivory group-hover:text-bmq-gold transition-colors duration-300">BMQ</span>
-              <span className="text-[0.6rem] tracking-[0.2em] text-bmq-ivory/60 mt-2 mb-8">BLINDAJE MÉDICO QUIRÚRGICO</span>
+            <Link to="/" className="flex flex-col group w-fit mb-8">
+              <img 
+                src="/images/logos/BMQ_H-D-T.png" 
+                alt="BMQ - Blindaje Médico Quirúrgico" 
+                className="bmq-footer-logo transition-opacity duration-300 group-hover:opacity-80"
+              />
             </Link>
             <p className="text-sm text-bmq-ivory/40 max-w-sm font-light leading-relaxed">
               Protección jurídica especializada y respaldo para profesionales de la salud.

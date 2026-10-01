@@ -2,16 +2,20 @@ export const PRICING_CONFIG = {
   ivaRate: 0.19,
 };
 
-export type PricingCategory = 'cirugia_ips' | 'medicina_estetica';
+/**
+ * Identificadores del catálogo del backend (GET /api/bmq/procedures y validación de
+ * POST /api/bmq/coverage-requests). Deben coincidir exactamente: el backend es la fuente de verdad.
+ */
+export type PricingCategory = 'cirugia' | 'estetica';
 export type CoverageType = 'basica' | 'plus';
 
 export const PRICING_CATEGORIES: Record<PricingCategory, { label: string, basica: number, plus: number }> = {
-  cirugia_ips: {
+  cirugia: {
     label: 'Cirugía / Cirujanos / Clínicas / IPS',
     basica: 300000,
     plus: 350000,
   },
-  medicina_estetica: {
+  estetica: {
     label: 'Medicina Estética / Ácido Hialurónico',
     basica: 100000,
     plus: 150000,

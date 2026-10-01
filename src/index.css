@@ -24,3 +24,16 @@
     font-family: var(--font-serif);
   }
 }
+
+/* =========================================
+   BMQ LOGO SIZING (NAVBAR & FOOTER)
+   ========================================= */
+.bmq-navbar-logo {
+  width: 120px;
+  height: auto;
+}
+
+.bmq-footer-logo {
+  width: 165px;
+  height: auto;
+}

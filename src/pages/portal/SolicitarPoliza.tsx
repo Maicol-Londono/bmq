@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, Link } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Check, Edit2, AlertCircle } from 'lucide-react';
-import { type CoverageType, type PricingCategory, PRICING_CATEGORIES, calculateLiquidation, formatCurrency } from '../../lib/pricing';
+import { type CoverageType, type PricingCategory, PRICING_CATEGORIES, formatCurrency } from '../../lib/pricing';
+import { getJson, postJson } from '../../lib/api';
 import { useAuth, type PaymentMode } from '../../contexts/AuthContext';
 
 export type RequestStatus = 'submitted' | 'payment_pending' | 'payment_verification' | 'paid' | 'issued';
@@ -21,6 +22,10 @@ interface CoverageRequest {
     documentType: string;
     documentNumber: string;
   };
+  /** Profesional tratante: solo se elige en afiliaciones de institución. */
+  professional: {
+    id: string;
+  };
   payment: {
     method: PaymentMode | null;
   };
@@ -34,6 +39,7 @@ const initialData: CoverageRequest = {
   coverageType: 'basica',
   procedure: { pricingCategory: '', name: '', scheduledDate: '', scheduledTime: '', locationType: '' },
   patient: { fullName: '', documentType: '', documentNumber: '' },
+  professional: { id: '' },
   payment: { method: null },
   consents: { dataTreatment: false, informationAccuracy: false }
 };
@@ -74,15 +80,69 @@ const Select = ({ label, required, options, error, ...props }: any) => (
   </div>
 );
 
+/** Respuesta de POST /coverage-requests/preview (montos como string decimal). */
+interface CoveragePreview {
+  coverage_amount: string;
+  tax_amount: string;
+  total_amount: string;
+  /** Tasa de IVA (en %) definida por el backend, p. ej. "19.00". */
+  tax_rate?: string;
+  /** Saldo disponible de la bolsa (balance - reservado) al momento del preview. */
+  wallet_available?: string;
+}
+
+/** Profesional devuelto por GET /api/bmq/professionals (vinculado y activo en la institución). */
+interface TreatingProfessional {
+  id: string;
+  full_name: string;
+  document_number: string | null;
+}
+
+type ProfessionalsStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 export function SolicitarPoliza() {
-  const { user } = useAuth();
+  const { user, activeAffiliation } = useAuth();
+  // En una afiliación de institución hay que elegir el profesional tratante;
+  // en una de profesional el tratante es el propio afiliado (sin selector).
+  const isInstitution = activeAffiliation?.kind === 'institution';
+  const [professionals, setProfessionals] = useState<TreatingProfessional[]>([]);
+  const [professionalsStatus, setProfessionalsStatus] = useState<ProfessionalsStatus>('idle');
+
+  useEffect(() => {
+    if (!isInstitution || !activeAffiliation) return;
+    let cancelled = false;
+    const load = async () => {
+      setProfessionalsStatus('loading');
+      try {
+        const list = await getJson<{data: TreatingProfessional[]}>(
+          `/professionals?affiliation_id=${encodeURIComponent(activeAffiliation.id)}`,
+        );
+        if (!cancelled) {
+          setProfessionals(list.data);
+          setProfessionalsStatus('ready');
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setProfessionalsStatus('error');
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isInstitution, activeAffiliation]);
+
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   
   const [formData, setFormData] = useState<CoverageRequest>(initialData);
+  const selectedProfessional = professionals.find((p) => p.id === formData.professional.id);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   
-  const [mockId, setMockId] = useState('');
+  const [requestCode, setRequestCode] = useState('');
+  // Liquidación calculada por el backend (POST /coverage-requests/preview): es la autoridad del precio.
+  const [preview, setPreview] = useState<CoveragePreview | null>(null);
+  const [previewError, setPreviewError] = useState('');
   const [requestStatus, setRequestStatus] = useState<RequestStatus>('submitted');
 
   useEffect(() => {
@@ -99,6 +159,33 @@ export function SolicitarPoliza() {
       setFormData(prev => ({ ...prev, payment: { method: user.paymentMode } }));
     }
   }, [user]);
+
+  // El precio final lo calcula el backend; se vuelve a pedir si cambia la categoría o el tipo de cobertura.
+  const previewCategory = formData.procedure.pricingCategory;
+  const previewCoverageType = formData.coverageType;
+  useEffect(() => {
+    setPreview(null);
+    setPreviewError('');
+    if (!activeAffiliation || !previewCategory) return;
+
+    let cancelled = false;
+    postJson<CoveragePreview>('/coverage-requests/preview', {
+      affiliation_id: activeAffiliation.id,
+      procedure_category: previewCategory,
+      coverage_type: previewCoverageType,
+    })
+      .then((result) => {
+        if (!cancelled) setPreview(result);
+      })
+      .catch((err: unknown) => {
+        console.error(err);
+        if (!cancelled) setPreviewError(err instanceof Error ? err.message : 'No fue posible calcular la liquidación.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAffiliation, previewCategory, previewCoverageType]);
 
   const updateNestedField = (section: keyof CoverageRequest, field: string, value: any) => {
     setFormData(prev => ({
@@ -138,6 +225,11 @@ export function SolicitarPoliza() {
       ['pricingCategory', 'name', 'scheduledDate', 'scheduledTime', 'locationType'].forEach(f => checkRequired('procedure', f));
     } else if (currentStep === 2) { // Paciente
       ['fullName', 'documentType', 'documentNumber'].forEach(f => checkRequired('patient', f));
+      // Institución: el profesional tratante es obligatorio y debe venir de la lista del backend.
+      if (isInstitution && !professionals.some((p) => p.id === formData.professional.id)) {
+        newErrors['professional.id'] = true;
+        isValid = false;
+      }
     } else if (currentStep === 4) { // Revisión (Consents)
       if (!formData.consents.dataTreatment) {
         newErrors['consents.dataTreatment'] = true;
@@ -165,17 +257,62 @@ export function SolicitarPoliza() {
     setCurrentStep(prev => prev - 1);
   };
 
-  const handleSubmit = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    // Evita envíos duplicados mientras la solicitud está en curso.
+    if (isSubmitting) return;
+    if (isInstitution && !selectedProfessional) {
+      // No debería ocurrir (el paso de paciente lo exige), pero nunca se envía sin tratante.
+      goToStep(2);
+      return;
+    }
     if (validateStep()) {
-      let finalStatus: RequestStatus = 'submitted';
-      if (formData.payment.method === 'immediate') finalStatus = 'payment_pending';
-      if (formData.payment.method === 'balance') finalStatus = 'payment_verification';
-      if (formData.payment.method === 'postpaid') finalStatus = 'submitted';
-      
-      setRequestStatus(finalStatus);
-      setMockId(`REQ-${Math.floor(100000 + Math.random() * 900000)}`);
-      window.scrollTo(0, 0);
-      setCurrentStep(5); // Confirmación
+      setIsSubmitting(true);
+      try {
+        const affiliationId = activeAffiliation?.id;
+        if (!affiliationId) throw new Error('No hay una afiliación activa.');
+        
+        const fullNameParts = formData.patient.fullName.trim().split(' ');
+        const firstName = fullNameParts[0] || '';
+        const lastName = fullNameParts.slice(1).join(' ') || '.';
+        
+        // 1. Create or Find Patient
+        const patientResult = await postJson<{data: any}>('/patients', {
+          affiliation_id: affiliationId,
+          first_name: firstName,
+          last_name: lastName,
+          document_type: formData.patient.documentType,
+          document_number: formData.patient.documentNumber,
+        });
+        const patientResponse = patientResult.data;
+        
+        // 2. Submit Coverage Request
+        const coverageResult = await postJson<{data: any}>('/coverage-requests', {
+          affiliation_id: affiliationId,
+          patient_id: patientResponse.id,
+          procedure_category: formData.procedure.pricingCategory,
+          procedure_name: formData.procedure.name,
+          location: formData.procedure.locationType,
+          room_entry_date: formData.procedure.scheduledDate,
+          room_entry_time: formData.procedure.scheduledTime,
+          coverage_type: formData.coverageType,
+          // Solo en institución; el backend valida que el profesional esté vinculado y activo.
+          ...(isInstitution ? { professional_id: formData.professional.id } : {}),
+        });
+        const coverageResponse = coverageResult.data;
+        
+        setRequestStatus(coverageResponse.status === 'draft' ? 'payment_pending' : 'submitted');
+        setRequestCode(coverageResponse.request_code || coverageResponse.id);
+        window.scrollTo(0, 0);
+        setCurrentStep(5); // Confirmación
+      } catch (err: any) {
+        console.error(err);
+        // ApiError ya trae el mensaje legible del backend (p. ej. el primer error de validación).
+        alert('Error al enviar la solicitud: ' + (err instanceof Error ? err.message : 'error desconocido'));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -184,7 +321,15 @@ export function SolicitarPoliza() {
     setCurrentStep(stepIndex);
   };
 
-  const currentPricing = formData.procedure.pricingCategory ? calculateLiquidation(formData.procedure.pricingCategory, formData.coverageType) : null;
+  const currentPricing = preview
+    ? {
+        subtotal: Number(preview.coverage_amount),
+        ivaAmount: Number(preview.tax_amount),
+        total: Number(preview.total_amount),
+      }
+    : null;
+  // Saldo: el del preview (más reciente) cuando existe; antes, el conocido desde el login.
+  const walletAvailable = preview?.wallet_available != null ? Number(preview.wallet_available) : (user?.balanceAvailable ?? 0);
   const isTimeWarning = getAnticipationWarning();
 
   return (
@@ -259,8 +404,8 @@ export function SolicitarPoliza() {
                   <Select 
                     label="Categoría" required error={errors['procedure.pricingCategory']} value={formData.procedure.pricingCategory} onChange={(e: any) => updateNestedField('procedure', 'pricingCategory', e.target.value)} 
                     options={[
-                      {label: PRICING_CATEGORIES.cirugia_ips.label, value: 'cirugia_ips'}, 
-                      {label: PRICING_CATEGORIES.medicina_estetica.label, value: 'medicina_estetica'}
+                      {label: PRICING_CATEGORIES.cirugia.label, value: 'cirugia'}, 
+                      {label: PRICING_CATEGORIES.estetica.label, value: 'estetica'}
                     ]} 
                   />
                   <Input label="Nombre del procedimiento" required error={errors['procedure.name']} value={formData.procedure.name} onChange={(e: any) => updateNestedField('procedure', 'name', e.target.value)} />
@@ -289,6 +434,35 @@ export function SolicitarPoliza() {
             {currentStep === 2 && (
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <h1 className="font-serif text-3xl lg:text-5xl mb-8">Datos del paciente</h1>
+                
+                <div className="bg-white/5 p-4 border border-white/10 mb-8">
+                  <h4 className="text-xs tracking-widest text-bmq-gold mb-3 uppercase">Buscar Paciente Existente</h4>
+                  <input 
+                    type="text" 
+                    placeholder="Escriba documento o nombre..." 
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      if (val.length >= 3) {
+                        try {
+                          const res = await getJson<{data: any[]}>(`/patients?affiliation_id=${activeAffiliation?.id}&query=${val}`);
+                          if (res.data.length > 0) {
+                            const p = res.data[0];
+                            setFormData(prev => ({
+                              ...prev,
+                              patient: {
+                                fullName: `${p.first_name} ${p.last_name}`,
+                                documentType: p.document_type,
+                                documentNumber: p.document_number
+                              }
+                            }));
+                          }
+                        } catch (e) {}
+                      }
+                    }}
+                    className="w-full bg-bmq-black border border-white/10 p-3 text-bmq-ivory text-sm focus:border-bmq-gold outline-none transition-colors" 
+                  />
+                </div>
+
                 <div className="bg-bmq-blue/10 border-l border-bmq-blue p-6 mb-12">
                   <p className="text-sm text-bmq-ivory/80 font-light leading-relaxed">
                     La privacidad es fundamental. Solicitamos únicamente la identificación básica del paciente para asociarlo a la cobertura. <strong className="font-medium text-bmq-ivory">No requerimos ni solicitamos historia clínica o información médica.</strong>
@@ -301,10 +475,45 @@ export function SolicitarPoliza() {
                     <Input label="Número doc." required error={errors['patient.documentNumber']} value={formData.patient.documentNumber} onChange={(e: any) => updateNestedField('patient', 'documentNumber', e.target.value)} />
                   </div>
                 </div>
+
+                {isInstitution && (
+                  <div className="mt-4">
+                    <h2 className="text-xs tracking-[0.2em] uppercase text-bmq-gold mb-6">Profesional tratante</h2>
+                    {professionalsStatus === 'loading' && (
+                      <p className="text-sm text-bmq-ivory/50 font-light">Cargando profesionales de la institución...</p>
+                    )}
+                    {professionalsStatus === 'error' && (
+                      <p className="text-sm text-red-400 font-light">No fue posible cargar los profesionales de la institución. Intenta de nuevo más tarde.</p>
+                    )}
+                    {professionalsStatus === 'ready' && professionals.length === 0 && (
+                      <div className="border-l border-red-400/60 bg-red-400/5 p-6">
+                        <p className="text-sm text-bmq-ivory/80 font-light">No hay profesionales asociados a esta institución.</p>
+                      </div>
+                    )}
+                    {professionalsStatus === 'ready' && professionals.length > 0 && (
+                      <Select
+                        label="Profesional tratante"
+                        required
+                        error={errors['professional.id']}
+                        value={formData.professional.id}
+                        onChange={(e: any) => updateNestedField('professional', 'id', e.target.value)}
+                        options={professionals.map((p) => ({
+                          value: p.id,
+                          label: p.document_number ? `${p.full_name} · Doc. ${p.document_number}` : p.full_name,
+                        }))}
+                      />
+                    )}
+                  </div>
+                )}
               </motion.div>
             )}
 
             {/* PASO 3 - LIQUIDACIÓN Y PAGO */}
+            {currentStep === 3 && !currentPricing && (
+              <div key="step3-loading" className="text-sm text-bmq-ivory/60">
+                {previewError || 'Calculando liquidación...'}
+              </div>
+            )}
             {currentStep === 3 && currentPricing && (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <h1 className="font-serif text-3xl lg:text-5xl mb-12">Liquidación</h1>
@@ -320,7 +529,7 @@ export function SolicitarPoliza() {
                       </div>
                       
                       <div className="flex justify-between items-center mb-6">
-                        <span className="text-sm font-light text-bmq-ivory/80">IVA (19%)</span>
+                        <span className="text-sm font-light text-bmq-ivory/80">{preview?.tax_rate != null ? `IVA (${Number(preview.tax_rate)}%)` : 'IVA'}</span>
                         <span className="font-serif text-bmq-ivory/80">{formatCurrency(currentPricing.ivaAmount)}</span>
                       </div>
                       
@@ -347,7 +556,7 @@ export function SolicitarPoliza() {
                          
                          <div className="flex justify-between items-center mb-4 text-sm font-light text-bmq-ivory/80">
                            <span>Saldo Disponible</span>
-                           <span>{formatCurrency(user.balanceAvailable)}</span>
+                           <span>{formatCurrency(walletAvailable)}</span>
                          </div>
                          <div className="flex justify-between items-center mb-4 text-sm font-light text-bmq-ivory/80">
                            <span>A descontar</span>
@@ -355,7 +564,7 @@ export function SolicitarPoliza() {
                          </div>
                          <div className="flex justify-between items-center pt-4 border-t border-bmq-gold/20">
                            <span className="text-xs tracking-widest uppercase text-bmq-gold">NUEVO SALDO PROYECTADO</span>
-                           <span className="font-serif text-xl text-bmq-gold">{formatCurrency(user.balanceAvailable - currentPricing.total)}</span>
+                           <span className="font-serif text-xl text-bmq-gold">{formatCurrency(walletAvailable - currentPricing.total)}</span>
                          </div>
                        </div>
                     )}
@@ -418,6 +627,9 @@ export function SolicitarPoliza() {
                     <div className="grid grid-cols-2 gap-4 text-sm font-light text-bmq-ivory/80">
                       <div><span className="text-bmq-ivory/40 block text-xs mb-1">Nombre</span>{formData.patient.fullName}</div>
                       <div><span className="text-bmq-ivory/40 block text-xs mb-1">Documento</span>{formData.patient.documentType.toUpperCase()} {formData.patient.documentNumber}</div>
+                      {isInstitution && (
+                        <div><span className="text-bmq-ivory/40 block text-xs mb-1">Profesional tratante</span>{selectedProfessional?.full_name ?? '—'}</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -466,7 +678,7 @@ export function SolicitarPoliza() {
                 
                 <div className="border border-white/10 bg-bmq-charcoal/30 p-8 max-w-md mx-auto mb-16">
                   <span className="text-[0.65rem] tracking-[0.2em] uppercase text-bmq-ivory/50 block mb-4">Número de Solicitud</span>
-                  <span className="font-serif text-3xl tracking-widest text-bmq-gold">{mockId}</span>
+                  <span className="font-serif text-3xl tracking-widest text-bmq-gold">{requestCode}</span>
                   <p className="text-xs text-bmq-ivory/40 mt-4 font-light">Podrás consultar el estado de la póliza en tu panel de Mis Pólizas.</p>
                 </div>
 
@@ -506,9 +718,10 @@ export function SolicitarPoliza() {
               ) : (
                 <button 
                   onClick={handleSubmit}
-                  className="bg-bmq-gold text-bmq-black px-12 py-4 text-xs tracking-[0.2em] font-medium flex items-center hover:bg-white transition-colors"
+                  disabled={isSubmitting}
+                  className="bg-bmq-gold text-bmq-black px-12 py-4 text-xs tracking-[0.2em] font-medium flex items-center hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  CONFIRMAR Y ENVIAR
+                  {isSubmitting ? 'ENVIANDO...' : 'CONFIRMAR Y ENVIAR'}
                   <ArrowRight size={14} className="ml-3" />
                 </button>
               )}

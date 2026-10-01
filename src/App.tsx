@@ -14,7 +14,9 @@ import { Contacto } from './pages/Contacto';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/portal/Dashboard';
 import { SolicitarPoliza } from './pages/portal/SolicitarPoliza';
+import { MisPacientes } from './pages/portal/MisPacientes';
 import { MisPolizas } from './pages/portal/MisPolizas';
+import { PolizaDetail } from './pages/portal/PolizaDetail';
 import { Perfil } from './pages/portal/Perfil';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 
@@ -50,8 +52,9 @@ export default function App() {
           <Route path="/portal" element={<PortalLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="solicitar-poliza" element={<SolicitarPoliza />} />
+            <Route path="pacientes" element={<MisPacientes />} />
             <Route path="polizas" element={<MisPolizas />} />
-            <Route path="polizas/:id" element={<div className="p-16 text-bmq-ivory">Detalle de Póliza (Mock)</div>} />
+            <Route path="polizas/:id" element={<PolizaDetail />} />
             <Route path="perfil" element={<Perfil />} />
           </Route>
         </Routes>

@@ -40,9 +40,12 @@ export function Header() {
     >
       <div className="container mx-auto px-6 lg:px-12 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex flex-col group">
-          <span className="font-serif text-2xl font-semibold tracking-wider text-bmq-ivory group-hover:text-bmq-gold transition-colors duration-300">BMQ</span>
-          <span className="text-[0.55rem] tracking-[0.2em] text-bmq-ivory/60 mt-0.5">BLINDAJE MÉDICO QUIRÚRGICO</span>
+        <Link to="/" className="flex items-center group">
+          <img 
+            src="/images/logos/BMQ_H-D-T.png" 
+            alt="BMQ - Blindaje Médico Quirúrgico" 
+            className="bmq-navbar-logo transition-opacity duration-300 group-hover:opacity-80"
+          />
         </Link>
 
         {/* Desktop Nav */}

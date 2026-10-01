@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { AffiliationSelector } from '../components/AffiliationSelector';
 
 export function Login() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, logout, selectAffiliation, affiliations, isAuthenticated, isPendingSelection, isInitializing } = useAuth();
   const navigate = useNavigate();
   
   const [email, setEmail] = useState('');
@@ -26,8 +27,11 @@ export function Login() {
     setIsLoading(true);
     setErrorMsg('');
     try {
-      await login(email, password);
-      navigate('/portal');
+      const { requiresSelection } = await login(email, password);
+      // Con varias afiliaciones se queda en esta pantalla para elegir; nunca se toma la primera.
+      if (!requiresSelection) {
+        navigate('/portal');
+      }
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -35,12 +39,28 @@ export function Login() {
     }
   };
 
+  // Mientras se valida un token guardado no se muestra el formulario (evita un parpadeo del login).
+  if (isInitializing) {
+    return <div className="min-h-screen bg-bmq-black" />;
+  }
+
   return (
     <div className="min-h-screen bg-bmq-black flex flex-col items-center justify-center pt-20 pb-20 relative">
       {/* Background ambient light */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-bmq-charcoal/30 rounded-full blur-[100px] -z-10 pointer-events-none" />
       
       <div className="w-full max-w-md px-6">
+        {isPendingSelection ? (
+          <AffiliationSelector
+            affiliations={affiliations}
+            onSelect={async (id) => {
+              await selectAffiliation(id);
+              navigate('/portal');
+            }}
+            onCancel={() => { void logout(); }}
+          />
+        ) : (
+        <>
         <div className="mb-6">
           <Link to="/" className="inline-flex items-center text-[10px] tracking-[0.2em] uppercase text-bmq-ivory/50 hover:text-bmq-ivory transition-colors group">
             <ArrowLeft size={12} className="mr-2 group-hover:-translate-x-1 transition-transform" />
@@ -61,10 +81,11 @@ export function Login() {
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="flex flex-col">
               <label className="text-[0.65rem] tracking-[0.2em] uppercase text-bmq-ivory/50 mb-3">
-                Usuario o Correo Electrónico
+                Correo Electrónico
               </label>
               <input 
-                type="text"
+                type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -102,26 +123,9 @@ export function Login() {
             </div>
           </form>
           
-          <div className="mt-8 text-center">
-            <button className="text-[0.65rem] tracking-[0.1em] text-bmq-ivory/40 hover:text-bmq-ivory transition-colors">
-              ¿Olvidó su contraseña?
-            </button>
-          </div>
         </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-12 p-6 border border-white/5 bg-bmq-charcoal/30 text-center"
-        >
-          <p className="text-[0.65rem] tracking-widest uppercase text-bmq-ivory/30 mb-4">Datos de Prueba (Mock Auth)</p>
-          <ul className="text-xs font-light text-bmq-ivory/50 space-y-2 inline-block text-left">
-            <li><strong className="text-bmq-ivory">pago@bmq.com</strong> → Pago por Emisión</li>
-            <li><strong className="text-bmq-ivory">saldo@bmq.com</strong> → Saldo a Favor</li>
-            <li><strong className="text-bmq-ivory">postpago@bmq.com</strong> → Pago Mensual</li>
-          </ul>
-        </motion.div>
+        </>
+        )}
       </div>
     </div>
   );
