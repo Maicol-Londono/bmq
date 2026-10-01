@@ -10,6 +10,33 @@ export const TOKEN_STORAGE_KEY = 'bmq_token';
  * Error HTTP con el estado y el mensaje legible que devuelve Laravel
  * (primer error de validación o `message`).
  */
+/**
+ * Póliza BMQ tal como la devuelve GET /policies y GET /policies/{id} (BmqPolicyResource).
+ * `id` es el id de la póliza; el de la solicitud de origen va en `coverage_request.id`.
+ */
+export interface BmqPolicy {
+  id: string;
+  status: string;
+  status_label: string;
+  issued_at: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  has_pdf: boolean;
+  affiliation_id: string | null;
+  coverage_request: {
+    id: string;
+    request_code: string | null;
+    patient_name: string | null;
+    procedure_name: string | null;
+    procedure_category_label: string | null;
+    coverage_type_label: string | null;
+    total_amount: string;
+    room_entry_date: string | null;
+    status: string;
+    status_label: string;
+  } | null;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;

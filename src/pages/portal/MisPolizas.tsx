@@ -3,28 +3,26 @@ import { motion } from 'framer-motion';
 import { FileText, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getJson, openPolicyPdf } from '../../lib/api';
+import { getJson, openPolicyPdf, type BmqPolicy } from '../../lib/api';
 
-interface RequestOrPolicy {
-  id: string;
-  request_code: string | null;
-  policy_id: string | null;
-  patient_name: string;
-  procedure_category_label: string;
-  coverage_type_label: string;
-  procedure_name: string;
-  created_at: string;
-  room_entry_date: string | null;
-  total_amount: number;
-  status: string;
-  status_label: string;
-  policy_status?: string;
-  has_pdf: boolean;
+/** Estilo del estado de la póliza (BmqPolicy.status). */
+function statusClass(status: string): string {
+  if (status === 'active') return 'text-emerald-400 bg-emerald-400/10';
+  if (status === 'failed' || status === 'cancelled_reverted') return 'text-red-400 bg-red-400/10';
+  return 'text-amber-400 bg-amber-400/10';
+}
+
+/** Código visible: nunca se asume que request_code o los ids existan. */
+function policyCode(item: BmqPolicy): string {
+  return item.coverage_request?.request_code
+    ?? item.coverage_request?.id?.substring(0, 8)
+    ?? item.id?.substring(0, 8)
+    ?? 'Sin código';
 }
 
 export function MisPolizas() {
   const { activeAffiliation } = useAuth();
-  const [data, setData] = useState<RequestOrPolicy[]>([]);
+  const [data, setData] = useState<BmqPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -36,7 +34,7 @@ export function MisPolizas() {
       setLoading(true);
       setError('');
       try {
-        const result = await getJson<{data: RequestOrPolicy[]}>(`/policies?affiliation_id=${activeAffiliation.id}`);
+        const result = await getJson<{data: BmqPolicy[]}>(`/policies?affiliation_id=${activeAffiliation.id}`);
         if (!cancelled) {
           setData(result.data);
         }
@@ -95,23 +93,19 @@ export function MisPolizas() {
                   </td>
                 </tr>
               ) : (
-                data.map((item) => (
+                data.map((item) => {
+                  const request = item.coverage_request;
+                  return (
                   <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors text-sm font-light">
                     <td className="p-6 font-medium text-bmq-ivory">
-                      {item.request_code || item.id.substring(0, 8)}
+                      {policyCode(item)}
                     </td>
-                    <td className="p-6">{item.patient_name}</td>
-                    <td className="p-6">{item.procedure_category_label}</td>
-                    <td className="p-6">{item.room_entry_date || item.created_at.substring(0, 10)}</td>
-                    <td className="p-6 text-bmq-gold">{item.coverage_type_label}</td>
+                    <td className="p-6">{request?.patient_name || '—'}</td>
+                    <td className="p-6">{request?.procedure_category_label || '—'}</td>
+                    <td className="p-6">{request?.room_entry_date || item.issued_at?.substring(0, 10) || '—'}</td>
+                    <td className="p-6 text-bmq-gold">{request?.coverage_type_label || '—'}</td>
                     <td className="p-6">
-                      {item.status === 'policy_issued' ? (
-                        <span className="text-emerald-400 bg-emerald-400/10 px-3 py-1 text-xs">{item.status_label}</span>
-                      ) : item.status === 'cancelled_reverted' ? (
-                        <span className="text-red-400 bg-red-400/10 px-3 py-1 text-xs">{item.status_label}</span>
-                      ) : (
-                        <span className="text-amber-400 bg-amber-400/10 px-3 py-1 text-xs">{item.status_label}</span>
-                      )}
+                      <span className={`${statusClass(item.status)} px-3 py-1 text-xs`}>{item.status_label}</span>
                     </td>
                     <td className="p-6 text-right">
                       {/* El certificado histórico se conserva aunque la póliza esté anulada. */}
@@ -123,11 +117,11 @@ export function MisPolizas() {
                         >
                           <Download size={14} className="mr-2" /> VER PDF
                         </button>
-                      ) : item.status === 'policy_issued' && item.policy_status === 'failed' ? (
+                      ) : item.status === 'failed' ? (
                         <span className="text-bmq-ivory/40 text-xs tracking-widest uppercase flex items-center justify-end w-full mb-2">
                           <FileText size={14} className="mr-2" /> PDF no disponible
                         </span>
-                      ) : item.status === 'policy_issued' ? (
+                      ) : item.status === 'generating' ? (
                         <span className="text-bmq-ivory/40 text-xs tracking-widest uppercase flex items-center justify-end w-full mb-2">
                           <FileText size={14} className="mr-2" /> PDF en generación
                         </span>
@@ -137,7 +131,8 @@ export function MisPolizas() {
                       </Link>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
