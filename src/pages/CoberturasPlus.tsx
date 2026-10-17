@@ -27,14 +27,14 @@ export function CoberturasPlus() {
             </h2>
             <p className="text-[17px] md:text-[20px] text-bmq-ivory/80 font-light leading-relaxed max-w-3xl mb-16">
               La estructura de protección jurídica de BMQ acompañada de un
-              componente de respaldo económico de hasta $250.000.000 ante una
+              componente de respaldo económico de hasta $250.000.000 COP ante una
               eventual condena, conforme a las condiciones de la cobertura.
             </p>
             
             <div className="inline-block border border-bmq-gold/30 p-8 relative">
               <div className="absolute top-0 right-0 w-2 h-2 bg-bmq-gold"></div>
               <span className="text-[10px] tracking-[0.3em] uppercase text-bmq-gold block mb-4">HASTA</span>
-              <p className="font-serif text-4xl md:text-5xl text-bmq-ivory mb-2">$250.000.000</p>
+              <p className="font-serif text-4xl md:text-5xl text-bmq-ivory mb-2">$250.000.000 COP</p>
               <p className="text-[11px] tracking-[0.2em] uppercase text-bmq-ivory/60 mb-6">RESPALDO ECONÓMICO*</p>
               <p className="text-[10px] text-bmq-ivory/40 italic font-light">
                 *Ante una eventual condena y conforme a las condiciones de la cobertura.
@@ -62,7 +62,7 @@ export function CoberturasPlus() {
               </h2>
               <p className="text-[17px] md:text-[19px] text-bmq-charcoal/80 font-normal leading-relaxed max-w-3xl mx-auto mb-16">
                 BMQ+ integra la estructura de protección jurídica de BMQ con un
-                componente de respaldo económico de hasta $250.000.000 ante una
+                componente de respaldo económico de hasta $250.000.000 COP ante una
                 eventual condena, conforme a las condiciones de la cobertura.
               </p>
               
@@ -190,7 +190,7 @@ export function CoberturasPlus() {
               </h2>
               <p className="text-[17px] md:text-[20px] text-bmq-ivory/70 font-light leading-relaxed mb-8">
                 BMQ+ incorpora un componente de respaldo económico de hasta
-                $250.000.000 ante una eventual condena, conforme a las condiciones
+                $250.000.000 COP ante una eventual condena, conforme a las condiciones
                 de la cobertura.
               </p>
               <p className="text-[12px] text-bmq-ivory/40 font-light italic">
@@ -212,7 +212,7 @@ export function CoberturasPlus() {
                 
                 <span className="text-[11px] tracking-[0.3em] uppercase text-bmq-gold/70 block mb-6">HASTA</span>
                 <p className="font-serif text-5xl md:text-6xl lg:text-7xl text-bmq-gold mb-6 tracking-tight">
-                  $250.000.000
+                  $250.000.000 COP
                 </p>
                 <div className="h-[1px] w-full bg-bmq-gold/10 mb-6"></div>
                 <p className="text-[12px] md:text-[13px] tracking-[0.2em] uppercase font-medium text-bmq-ivory/90">
@@ -239,7 +239,7 @@ export function CoberturasPlus() {
               "HASTA" NO SIGNIFICA<br />UN PAGO AUTOMÁTICO.
             </h2>
             <p className="text-[16px] md:text-[18px] text-bmq-ivory/60 font-light leading-relaxed">
-              El monto de hasta $250.000.000 corresponde al límite máximo de
+              El monto de hasta $250.000.000 COP corresponde al límite máximo de
               respaldo económico anunciado para BMQ+ ante una eventual condena,
               siempre de acuerdo con las condiciones, alcance y términos aplicables
               a la cobertura contratada.
@@ -587,7 +587,7 @@ export function CoberturasPlus() {
 
               <p className="text-[15px] md:text-[17px] text-bmq-ivory/60 font-light leading-relaxed max-w-2xl mx-auto mb-10">
                 BMQ+ mantiene la estructura de protección jurídica de BMQ y añade
-                un componente de respaldo económico de hasta $250.000.000 ante una
+                un componente de respaldo económico de hasta $250.000.000 COP ante una
                 eventual condena, conforme a las condiciones de la cobertura.
               </p>
               
@@ -633,7 +633,7 @@ export function CoberturasPlus() {
                 <Check size={16} className="text-bmq-gold mr-4 mt-0.5 flex-shrink-0" />
                 <div className="flex flex-col">
                   <span className="text-[15px] font-medium text-bmq-black leading-relaxed">
-                    Respaldo económico de hasta $250.000.000*
+                    Respaldo económico de hasta $250.000.000 COP*
                   </span>
                   <span className="text-[11px] text-bmq-charcoal/50 italic mt-1">
                     *Ante una eventual condena y conforme a las condiciones de la cobertura.

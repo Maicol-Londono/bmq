@@ -18,7 +18,7 @@ export function FinancialBackingSection() {
           <span className="text-[0.65rem] tracking-[0.3em] uppercase text-bmq-gold mb-16">[POR VALIDAR CONTRACTUALMENTE]</span>
           
           <h2 className="font-serif text-7xl md:text-[8rem] lg:text-[12rem] leading-none text-transparent bg-clip-text bg-gradient-to-b from-bmq-ivory to-bmq-ivory/30 mb-8 font-light">
-            $250M
+            250 millones de pesos
           </h2>
           
           <div className="w-px h-16 bg-gradient-to-b from-bmq-gold/40 to-transparent mb-12"></div>

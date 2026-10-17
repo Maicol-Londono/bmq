@@ -418,7 +418,7 @@ export function Proteccion() {
               <span className="text-[10px] tracking-[0.2em] uppercase text-bmq-gold/50 block mb-8">PROTECCIÓN JURÍDICA + RESPALDO</span>
               <p className="text-[16px] text-bmq-ivory/70 font-light leading-relaxed mb-6">
                 El esquema de protección jurídica acompañado de un componente de
-                respaldo económico de hasta $250.000.000 ante una eventual condena,
+                respaldo económico de hasta $250.000.000 COP ante una eventual condena,
                 conforme a las condiciones de la cobertura.
               </p>
             </motion.div>

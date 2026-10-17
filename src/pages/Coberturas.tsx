@@ -11,7 +11,7 @@ const comparisonFeatures = [
   { name: 'DEFENSA DISCIPLINARIA', bmq: true, plus: true },
   { name: 'PROCESOS ADMINISTRATIVOS', bmq: true, plus: true },
   { name: 'VIGENCIA DE PROTECCIÓN', bmq: true, plus: true },
-  { name: 'RESPALDO ECONÓMICO', bmq: false, plus: 'HASTA $250.000.000*' }
+  { name: 'RESPALDO ECONÓMICO', bmq: false, plus: 'HASTA $250.000.000 COP*' }
 ];
 
 export function Coberturas() {
@@ -193,7 +193,7 @@ export function Coberturas() {
               <span className="text-[10px] tracking-[0.2em] uppercase text-bmq-gold/60 block mb-6">PROTECCIÓN JURÍDICA + RESPALDO</span>
               <p className="text-[17px] text-bmq-ivory/70 font-light leading-relaxed">
                 La misma estructura de protección jurídica, acompañada de un
-                componente de respaldo económico de hasta $250.000.000 ante una
+                componente de respaldo económico de hasta $250.000.000 COP ante una
                 eventual condena, conforme a las condiciones de la cobertura.
               </p>
             </motion.div>

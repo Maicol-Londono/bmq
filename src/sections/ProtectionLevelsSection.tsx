@@ -56,7 +56,7 @@ export function ProtectionLevelsSection() {
             <span className="text-[0.65rem] tracking-[0.2em] text-bmq-gold/70 uppercase block mb-12">Protección Jurídica + Respaldo</span>
             
             <p className="text-sm text-bmq-ivory/70 font-light leading-relaxed mb-16 flex-grow">
-              El esquema completo de defensa especializado, sumado al componente de respaldo económico de hasta $250M COP*.
+              El esquema completo de defensa especializado, sumado al componente de respaldo económico de hasta $250.000.000 COP*.
             </p>
             
             <Link to="/coberturas" className="text-xs tracking-widest text-bmq-gold border-b border-bmq-gold/30 pb-2 hover:border-bmq-gold hover:text-bmq-ivory transition-all duration-300">
