@@ -19,6 +19,7 @@ import { MisPolizas } from './pages/portal/MisPolizas';
 import { PolizaDetail } from './pages/portal/PolizaDetail';
 import { Perfil } from './pages/portal/Perfil';
 import { PagoResultado } from './pages/portal/PagoResultado';
+import { SeoManager } from './seo/SeoManager';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 
 function SolicitarCoberturaRedirect() {
@@ -33,6 +34,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <SeoManager />
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Home />} />

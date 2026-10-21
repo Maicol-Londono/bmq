@@ -120,7 +120,7 @@ export function HeroCinematic() {
             transition={{ duration: 2, delay: timeline.subheadlineReveal, ease: "easeOut" }}
             className="text-sm md:text-lg text-bmq-ivory/70 max-w-xl mb-14 font-light leading-relaxed border-l border-white/5 pl-6"
           >
-            Protección jurídica especializada y respaldo para profesionales de la salud que realizan procedimientos quirúrgicos, estéticos e invasivos.
+            Cobertura y protección jurídica especializada, con respaldo, para médicos y profesionales de la salud en Colombia que realizan procedimientos quirúrgicos, estéticos e invasivos.
           </motion.p>
 
           {/* CTA Reveal */}

@@ -9,21 +9,7 @@ export function MainLayout() {
   useEffect(() => {
     // Scroll to top on route change
     window.scrollTo(0, 0);
-
-    // Dynamic titles
-    const titles: Record<string, string> = {
-      '/': 'Inicio',
-      '/proteccion': 'Protección Jurídica',
-      '/coberturas': 'Coberturas',
-      '/coberturas/basica': 'Garantía Básica',
-      '/coberturas/plus': 'Garantía Plus',
-      '/procedimientos': 'Procedimientos y Alcance',
-      '/nosotros': 'Quiénes Somos',
-      '/contacto': 'Contacto',
-      '/solicitar-cobertura': 'Solicitar Cobertura'
-    };
-
-    document.title = `BMQ | ${titles[pathname] || 'Blindaje Médico Quirúrgico'}`;
+    // Los metadatos SEO (title, description, canonical...) los gestiona <SeoManager /> en App.tsx
   }, [pathname]);
 
   return (

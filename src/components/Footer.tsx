@@ -8,6 +8,7 @@ export function Footer() {
     { name: 'Procedimientos', href: '/procedimientos' },
     { name: 'Nosotros', href: '/nosotros' },
     { name: 'Contacto', href: '/contacto' },
+    { name: 'Solicitar cobertura', href: '/solicitar-cobertura' },
   ];
 
   const legal = [
