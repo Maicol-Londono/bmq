@@ -18,6 +18,7 @@ import { MisPacientes } from './pages/portal/MisPacientes';
 import { MisPolizas } from './pages/portal/MisPolizas';
 import { PolizaDetail } from './pages/portal/PolizaDetail';
 import { Perfil } from './pages/portal/Perfil';
+import { PagoResultado } from './pages/portal/PagoResultado';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 
 function SolicitarCoberturaRedirect() {
@@ -56,6 +57,11 @@ export default function App() {
             <Route path="polizas" element={<MisPolizas />} />
             <Route path="polizas/:id" element={<PolizaDetail />} />
             <Route path="perfil" element={<Perfil />} />
+          </Route>
+
+          {/* Retorno del checkout de Wompi: dentro del Portal (exige sesión), en la ruta registrada en el backend */}
+          <Route element={<PortalLayout />}>
+            <Route path="/pago/resultado" element={<PagoResultado />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -5,6 +5,7 @@ import { ArrowRight, ArrowLeft, Check, Edit2, AlertCircle } from 'lucide-react';
 import { type CoverageType, type PricingCategory, PRICING_CATEGORIES, formatCurrency } from '../../lib/pricing';
 import { getJson, postJson } from '../../lib/api';
 import { useAuth, type PaymentMode } from '../../contexts/AuthContext';
+import { payWithWompi } from '../../lib/payments';
 
 export type RequestStatus = 'submitted' | 'payment_pending' | 'payment_verification' | 'paid' | 'issued';
 
@@ -144,6 +145,11 @@ export function SolicitarPoliza() {
   const [preview, setPreview] = useState<CoveragePreview | null>(null);
   const [previewError, setPreviewError] = useState('');
   const [requestStatus, setRequestStatus] = useState<RequestStatus>('submitted');
+  // EMISIÓN: id de la solicitud creada (para iniciar o reintentar el pago con Wompi).
+  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState('');
+  const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
+  const isEmision = user?.paymentMode === 'immediate';
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -302,10 +308,18 @@ export function SolicitarPoliza() {
         });
         const coverageResponse = coverageResult.data;
         
-        setRequestStatus(coverageResponse.status === 'draft' ? 'payment_pending' : 'submitted');
+        const needsPayment = isEmision && coverageResponse.status === 'draft';
+        setRequestStatus(needsPayment ? 'payment_pending' : 'submitted');
         setRequestCode(coverageResponse.request_code || coverageResponse.id);
+        setCreatedRequestId(coverageResponse.id);
         window.scrollTo(0, 0);
         setCurrentStep(5); // Confirmación
+
+        // EMISIÓN: la solicitud ya existe; ahora se paga con Wompi. Si el pago no arranca,
+        // la confirmación muestra el botón para reintentarlo (la solicitud NO se vuelve a crear).
+        if (needsPayment) {
+          await startPayment(coverageResponse.id, coverageResponse.request_code ?? null);
+        }
       } catch (err: any) {
         console.error(err);
         // ApiError ya trae el mensaje legible del backend (p. ej. el primer error de validación).
@@ -313,6 +327,19 @@ export function SolicitarPoliza() {
       } finally {
         setIsSubmitting(false);
       }
+    }
+  };
+
+  // Lleva al checkout de Wompi. Si sale bien, el navegador abandona esta página.
+  const startPayment = async (requestId: string, code: string | null) => {
+    setPaymentError('');
+    setIsRedirectingToPayment(true);
+    try {
+      await payWithWompi(requestId, code);
+    } catch (err) {
+      console.error(err);
+      setPaymentError(err instanceof Error ? err.message : 'No fue posible iniciar el pago.');
+      setIsRedirectingToPayment(false);
     }
   };
 
@@ -546,7 +573,7 @@ export function SolicitarPoliza() {
                     {user?.paymentMode === 'immediate' && (
                        <div className="border border-bmq-blue/30 bg-bmq-blue/5 p-6">
                          <span className="block text-sm text-bmq-ivory tracking-wider mb-2">PAGO POR EMISIÓN</span>
-                         <span className="block text-sm font-light text-bmq-ivory/70 leading-relaxed">Deberás realizar el pago por los medios habilitados. La póliza se emitirá una vez el pago sea confirmado por nuestro equipo.</span>
+                         <span className="block text-sm font-light text-bmq-ivory/70 leading-relaxed">Al enviar la solicitud pagarás en línea con Wompi (tarjeta, PSE, Nequi y más). La póliza se emitirá automáticamente cuando el pago sea aprobado.</span>
                        </div>
                     )}
 
@@ -671,7 +698,9 @@ export function SolicitarPoliza() {
                 </h1>
                 
                 <p className="text-lg text-bmq-ivory/70 font-light max-w-xl mx-auto mb-16">
-                  {requestStatus === 'payment_pending' && 'Hemos recibido tu solicitud. Nuestro equipo esperará la confirmación del pago para proceder con la expedición.'}
+                  {requestStatus === 'payment_pending' && (isRedirectingToPayment
+                    ? 'Te estamos llevando al pago seguro de Wompi…'
+                    : 'Tu solicitud fue creada. Falta el pago para aprobarla y emitir la póliza automáticamente.')}
                   {requestStatus === 'payment_verification' && 'Hemos recibido tu solicitud. Nuestro equipo descontará el valor de tu saldo a favor y procederá con la expedición.'}
                   {requestStatus === 'submitted' && 'Hemos recibido tu solicitud. Será procesada y acumulada en tu estado de cuenta según la periodicidad acordada.'}
                 </p>
@@ -682,7 +711,22 @@ export function SolicitarPoliza() {
                   <p className="text-xs text-bmq-ivory/40 mt-4 font-light">Podrás consultar el estado de la póliza en tu panel de Mis Pólizas.</p>
                 </div>
 
+                {requestStatus === 'payment_pending' && paymentError && (
+                  <p className="text-sm text-red-400 font-light max-w-md mx-auto mb-8 flex items-center justify-center">
+                    <AlertCircle size={14} className="mr-2 shrink-0" /> {paymentError}
+                  </p>
+                )}
+
                 <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
+                  {requestStatus === 'payment_pending' && createdRequestId && (
+                    <button
+                      onClick={() => void startPayment(createdRequestId, requestCode || null)}
+                      disabled={isRedirectingToPayment}
+                      className="bg-bmq-gold text-bmq-black px-10 py-4 text-xs tracking-[0.2em] font-medium hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isRedirectingToPayment ? 'REDIRIGIENDO A WOMPI...' : 'PAGAR CON WOMPI'}
+                    </button>
+                  )}
                   <Link to="/portal/polizas" className="bg-bmq-ivory text-bmq-black px-10 py-4 text-xs tracking-[0.2em] font-medium hover:bg-white transition-colors duration-300">
                     VER MIS PÓLIZAS
                   </Link>
@@ -721,7 +765,7 @@ export function SolicitarPoliza() {
                   disabled={isSubmitting}
                   className="bg-bmq-gold text-bmq-black px-12 py-4 text-xs tracking-[0.2em] font-medium flex items-center hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'ENVIANDO...' : 'CONFIRMAR Y ENVIAR'}
+                  {isSubmitting ? 'ENVIANDO...' : isEmision ? 'CONFIRMAR Y PAGAR' : 'CONFIRMAR Y ENVIAR'}
                   <ArrowRight size={14} className="ml-3" />
                 </button>
               )}
