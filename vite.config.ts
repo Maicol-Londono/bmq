@@ -26,13 +26,13 @@ function headFor(route: RouteSeo): string {
     `<title>${escapeText(route.title)}</title>`,
     `<meta name="description" content="${escapeAttr(route.description)}" />`,
     `<meta name="robots" content="${robots}" />`,
-    `<link rel="canonical" href="${canonical}" />`,
+    ...(route.indexable ? [`<link rel="canonical" href="${canonical}" />`] : []),
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="${escapeAttr(SITE_NAME)}" />`,
     `<meta property="og:locale" content="es_CO" />`,
     `<meta property="og:title" content="${escapeAttr(route.title)}" />`,
     `<meta property="og:description" content="${escapeAttr(route.description)}" />`,
-    `<meta property="og:url" content="${canonical}" />`,
+    ...(route.indexable ? [`<meta property="og:url" content="${canonical}" />`] : []),
     `<meta property="og:image" content="${absoluteUrl(DEFAULT_OG_IMAGE)}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${escapeAttr(route.title)}" />`,
@@ -76,8 +76,6 @@ function seoPlugin(): Plugin {
           .replace('<!--seo-noscript-->', noscriptFor(route))
 
       for (const route of [...PUBLIC_ROUTES, ...PRIVATE_ROUTES]) {
-        // /portal y /pago/resultado quedan atendidos por el fallback SPA con noindex vía SeoManager
-        if (route.path === '/portal') continue
         const html = build(route)
         if (route.path === '/') {
           writeFileSync(join(outDir, 'index.html'), html)
@@ -88,11 +86,22 @@ function seoPlugin(): Plugin {
         }
       }
 
-      const today = new Date().toISOString().slice(0, 10)
+      // 404.html: shell SPA con noindex para rutas desconocidas (el servidor debe responder 404 con este archivo)
+      writeFileSync(
+        join(outDir, '404.html'),
+        build({
+          path: '/404',
+          title: 'Página no encontrada | BMQ',
+          description: 'La página que buscas no existe.',
+          breadcrumb: 'No encontrada',
+          indexable: false,
+        }),
+      )
+
       const urls = PUBLIC_ROUTES.filter((r) => r.indexable)
         .map(
           (r) =>
-            `  <url>\n    <loc>${canonicalFor(r.path)}</loc>\n    <lastmod>${today}</lastmod>\n    <priority>${(r.priority ?? 0.5).toFixed(1)}</priority>\n  </url>`,
+            `  <url>\n    <loc>${canonicalFor(r.path)}</loc>\n    <priority>${(r.priority ?? 0.5).toFixed(1)}</priority>\n  </url>`,
         )
         .join('\n')
       writeFileSync(
@@ -102,7 +111,7 @@ function seoPlugin(): Plugin {
 
       writeFileSync(
         join(outDir, 'robots.txt'),
-        `User-agent: *\nAllow: /\nDisallow: /portal\nDisallow: /pago/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`,
+        `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`,
       )
     },
   }

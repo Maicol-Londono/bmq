@@ -53,7 +53,8 @@ export function SeoManager() {
     document.title = seo.title;
     upsertMeta('name', 'description', seo.description);
     upsertMeta('name', 'robots', seo.indexable ? 'index, follow' : 'noindex, nofollow');
-    upsertCanonical(canonical);
+    if (seo.indexable) upsertCanonical(canonical);
+    else document.head.querySelector('link[rel="canonical"]')?.remove();
 
     upsertMeta('property', 'og:type', 'website');
     upsertMeta('property', 'og:site_name', SITE_NAME);

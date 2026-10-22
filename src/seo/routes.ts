@@ -33,9 +33,9 @@ export interface RouteSeo {
 export const PUBLIC_ROUTES: RouteSeo[] = [
   {
     path: '/',
-    title: 'Cobertura Médica para Médicos | Blindaje Médico Quirúrgico',
+    title: 'Cobertura Jurídica para Médicos | Blindaje Médico Quirúrgico',
     description:
-      'Protección jurídica especializada y respaldo para médicos y profesionales de la salud en Colombia que realizan procedimientos quirúrgicos, estéticos e invasivos. Conoce BMQ y BMQ+.',
+      'Protección jurídica especializada para médicos y profesionales de la salud en Colombia: prevención, defensa y, con BMQ+, respaldo económico según condiciones.',
     breadcrumb: 'Inicio',
     indexable: true,
     priority: 1.0,
