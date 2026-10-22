@@ -12,10 +12,9 @@ export function Footer() {
   ];
 
   const legal = [
-    { name: 'Política de privacidad', href: '#' },
-    { name: 'Tratamiento de datos', href: '#' },
-    { name: 'Términos y condiciones', href: '#' },
-    { name: 'Aviso legal', href: '#' },
+    { name: 'Política de tratamiento de datos', href: '/politica-tratamiento-datos' },
+    { name: 'Aviso de privacidad', href: '/aviso-de-privacidad' },
+    { name: 'Autorización de tratamiento de datos', href: '/autorizacion-tratamiento-datos' },
   ];
 
   return (
@@ -54,9 +53,15 @@ export function Footer() {
             <ul className="space-y-4">
               {legal.map((item) => (
                 <li key={item.name}>
-                  <a href={item.href} className="text-sm text-bmq-ivory/60 hover:text-bmq-ivory transition-colors duration-300">
-                    {item.name}
-                  </a>
+                  {item.href.startsWith('/') ? (
+                    <Link to={item.href} className="text-sm text-bmq-ivory/60 hover:text-bmq-ivory transition-colors duration-300">
+                      {item.name}
+                    </Link>
+                  ) : (
+                    <a href={item.href} className="text-sm text-bmq-ivory/60 hover:text-bmq-ivory transition-colors duration-300">
+                      {item.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

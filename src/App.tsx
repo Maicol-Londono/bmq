@@ -9,6 +9,9 @@ import { CoberturasBasica } from './pages/CoberturasBasica';
 import { CoberturasPlus } from './pages/CoberturasPlus';
 import { Nosotros } from './pages/Nosotros';
 import { Contacto } from './pages/Contacto';
+import { PoliticaTratamientoDatos } from './pages/PoliticaTratamientoDatos';
+import { AvisoPrivacidad } from './pages/AvisoPrivacidad';
+import { AutorizacionTratamientoDatos } from './pages/AutorizacionTratamientoDatos';
 
 // Portal
 import { Login } from './pages/Login';
@@ -45,6 +48,9 @@ export default function App() {
             <Route path="coberturas/plus" element={<CoberturasPlus />} />
             <Route path="nosotros" element={<Nosotros />} />
             <Route path="contacto" element={<Contacto />} />
+            <Route path="politica-tratamiento-datos" element={<PoliticaTratamientoDatos />} />
+            <Route path="aviso-de-privacidad" element={<AvisoPrivacidad />} />
+            <Route path="autorizacion-tratamiento-datos" element={<AutorizacionTratamientoDatos />} />
             <Route path="solicitar-cobertura" element={<SolicitarCoberturaRedirect />} />
           </Route>
 

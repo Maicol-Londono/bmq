@@ -15,6 +15,8 @@ import {
   jsonLdFor,
 } from './src/seo/routes.ts'
 import type { RouteSeo } from './src/seo/routes.ts'
+import { LEGAL_DOCUMENTS } from './src/content/legalDocuments.ts'
+import type { LegalBlock, LegalDocumentContent } from './src/content/legalTypes.ts'
 
 const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 const escapeText = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -47,7 +49,35 @@ function headFor(route: RouteSeo): string {
   return tags.map((t) => `    ${t}`).join('\n')
 }
 
+function legalBlockHtml(b: LegalBlock): string {
+  if (b.type === 'h3') return `<h3>${escapeText(b.text)}</h3>`
+  if (b.type === 'list') {
+    const items = b.items
+      .map((i) => `<li>${escapeText(i.label)} ${i.term ? `<strong>${escapeText(i.term)}:</strong> ` : ''}${escapeText(i.text)}</li>`)
+      .join('')
+    return `<ol style="list-style:none;padding:0">${items}</ol>`
+  }
+  if (b.type === 'form') {
+    return `<ul>${b.rows.flat().map((l) => `<li>${escapeText(l)}: ____________________</li>`).join('')}</ul>`
+  }
+  if (b.type === 'facts') {
+    return `<ul>${b.items.map((i) => `<li><strong>${escapeText(i.label)}:</strong> ${escapeText(i.value)}</li>`).join('')}</ul>`
+  }
+  return `<p>${escapeText(b.text)}</p>`
+}
+
+// Texto legal completo en el HTML inicial para quien no ejecute JavaScript.
+function legalNoscript(doc: LegalDocumentContent): string {
+  const toc = doc.sections.map((s) => `<li><a href="#${s.id}">${escapeText(`${s.n}. ${s.title}`)}</a></li>`).join('')
+  const sections = doc.sections
+    .map((s) => `<section id="${s.id}"><h2>${escapeText(`${s.n}. ${s.title}`)}</h2>${s.blocks.map(legalBlockHtml).join('')}</section>`)
+    .join('')
+  return `<noscript><main><h1>${escapeText(doc.title)}</h1><p>${escapeText(doc.intro)}</p><nav><ol>${toc}</ol></nav>${sections}<p>Atentamente,<br />${escapeText(doc.signoff)}</p><p><a href="/">Volver al inicio</a></p></main></noscript>`
+}
+
 function noscriptFor(route: RouteSeo): string {
+  const legal = LEGAL_DOCUMENTS[route.path]
+  if (legal) return legalNoscript(legal)
   const links = PUBLIC_ROUTES.map((r) => `<li><a href="${r.path}">${escapeText(r.breadcrumb)}</a></li>`).join('')
   return `<noscript><main><h1>${escapeText(route.title)}</h1><p>${escapeText(route.description)}</p><nav><ul>${links}</ul></nav></main></noscript>`
 }

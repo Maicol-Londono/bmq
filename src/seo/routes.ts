@@ -103,6 +103,35 @@ export const PUBLIC_ROUTES: RouteSeo[] = [
     indexable: true,
     priority: 0.7,
   },
+  {
+    // Texto legal pendiente de validación jurídica: ver informe. Para dejar de indexarla, poner indexable en false.
+    path: '/politica-tratamiento-datos',
+    title: 'Política de Tratamiento de Datos Personales | BMQ',
+    description:
+      'Consulta la Política de Tratamiento de Datos Personales de Blindaje Médico Quirúrgico y conoce las disposiciones sobre el uso y la protección de la información personal.',
+    breadcrumb: 'Política de Tratamiento de Datos Personales',
+    indexable: true,
+    priority: 0.3,
+  },
+  {
+    // Contiene datos del responsable aún por confirmar (razón social y NIT): no se indexa hasta completarlos.
+    // Al confirmarlos, poner indexable en true para que entre al sitemap con su canonical.
+    path: '/aviso-de-privacidad',
+    title: 'Aviso de Privacidad | BMQ',
+    description:
+      'Consulta el Aviso de Privacidad de Blindaje Médico Quirúrgico: finalidades del tratamiento de datos personales, derechos de los titulares y canales para ejercerlos.',
+    breadcrumb: 'Aviso de Privacidad',
+    indexable: false,
+  },
+  {
+    // Contiene datos del responsable aún por confirmar (razón social y NIT): no se indexa hasta completarlos.
+    path: '/autorizacion-tratamiento-datos',
+    title: 'Autorización para el Tratamiento de Datos Personales | BMQ',
+    description:
+      'Aviso de privacidad y formato de autorización expresa para el tratamiento de datos personales de Blindaje Médico Quirúrgico.',
+    breadcrumb: 'Autorización de Tratamiento de Datos',
+    indexable: false,
+  },
 ];
 
 // Rutas existentes que NO deben indexarse.

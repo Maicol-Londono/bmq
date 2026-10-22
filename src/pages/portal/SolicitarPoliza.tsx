@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, Link } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Check, Edit2, AlertCircle } from 'lucide-react';
@@ -80,6 +80,117 @@ const Select = ({ label, required, options, error, ...props }: any) => (
     </select>
   </div>
 );
+
+const LOCATION_OPTIONS = [
+  { label: 'Clínica', value: 'Clínica' },
+  { label: 'Consultorio', value: 'Consultorio' },
+];
+
+/** Procedimiento del catálogo (GET /procedures). */
+interface ProcedureOption {
+  id: string;
+  name: string;
+  category: string;
+}
+
+/** Paciente devuelto por GET /patients. */
+interface PatientMatch {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  document_type: string;
+  document_number: string;
+}
+
+/**
+ * Buscador de pacientes de la afiliación activa: lista las coincidencias (documento o nombre)
+ * y, al elegir una, entrega sus datos para precargar el formulario.
+ */
+function PatientSearch({ affiliationId, onSelect }: { affiliationId?: string; onSelect: (patient: PatientMatch) => void }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<PatientMatch[]>([]);
+  const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || !affiliationId) return;
+    let cancelled = false;
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await getJson<{ data: PatientMatch[] }>(
+          `/patients?affiliation_id=${encodeURIComponent(affiliationId)}&query=${encodeURIComponent(query.trim())}`,
+        );
+        if (!cancelled) setResults(res.data);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [open, query, affiliationId]);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative bg-white/5 p-4 border border-white/10 mb-8">
+      <h4 className="text-xs tracking-widest text-bmq-gold mb-3 uppercase">Buscar Paciente Existente</h4>
+      <input
+        type="text"
+        value={query}
+        placeholder="Escriba documento o nombre..."
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        className="w-full bg-bmq-black border border-white/10 p-3 text-bmq-ivory text-sm focus:border-bmq-gold outline-none transition-colors"
+      />
+      {open && (
+        <ul className="absolute left-4 right-4 top-full -mt-4 z-20 max-h-64 overflow-y-auto bg-bmq-charcoal border border-white/10 shadow-xl">
+          {loading && <li className="px-4 py-3 text-sm text-bmq-ivory/50 font-light">Buscando...</li>}
+          {!loading && results.length === 0 && (
+            <li className="px-4 py-3 text-sm text-bmq-ivory/50 font-light">
+              No hay pacientes que coincidan. Diligencie los datos abajo y se guardará como paciente nuevo.
+            </li>
+          )}
+          {!loading &&
+            results.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect(p);
+                    setQuery('');
+                    setOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-sm text-bmq-ivory hover:bg-white/10 transition-colors flex justify-between gap-4"
+                >
+                  <span className="font-light">{p.full_name}</span>
+                  <span className="text-bmq-ivory/50 text-xs uppercase shrink-0">
+                    {p.document_type} {p.document_number}
+                  </span>
+                </button>
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 /** Respuesta de POST /coverage-requests/preview (montos como string decimal). */
 interface CoveragePreview {
@@ -192,6 +303,37 @@ export function SolicitarPoliza() {
       cancelled = true;
     };
   }, [activeAffiliation, previewCategory, previewCoverageType]);
+
+  // Catálogo de procedimientos de la categoría elegida (GET /procedures).
+  const [procedureOptions, setProcedureOptions] = useState<ProcedureOption[]>([]);
+  const [proceduresLoading, setProceduresLoading] = useState(false);
+  useEffect(() => {
+    if (!previewCategory) {
+      setProcedureOptions([]);
+      return;
+    }
+    let cancelled = false;
+    setProceduresLoading(true);
+    getJson<{ data: ProcedureOption[] }>(`/procedures?category=${encodeURIComponent(previewCategory)}`)
+      .then((res) => {
+        if (cancelled) return;
+        setProcedureOptions(res.data);
+        // Si la categoría cambió, un nombre elegido de la anterior ya no es válido.
+        setFormData((prev) =>
+          res.data.some((p) => p.name === prev.procedure.name) ? prev : { ...prev, procedure: { ...prev.procedure, name: '' } },
+        );
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setProcedureOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setProceduresLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [previewCategory]);
 
   const updateNestedField = (section: keyof CoverageRequest, field: string, value: any) => {
     setFormData(prev => ({
@@ -435,8 +577,13 @@ export function SolicitarPoliza() {
                       {label: PRICING_CATEGORIES.estetica.label, value: 'estetica'}
                     ]} 
                   />
-                  <Input label="Nombre del procedimiento" required error={errors['procedure.name']} value={formData.procedure.name} onChange={(e: any) => updateNestedField('procedure', 'name', e.target.value)} />
-                  <Input label="Lugar (Clínica/Consultorio)" required error={errors['procedure.locationType']} value={formData.procedure.locationType} onChange={(e: any) => updateNestedField('procedure', 'locationType', e.target.value)} />
+                  <Select
+                    label="Nombre del procedimiento" required error={errors['procedure.name']} value={formData.procedure.name}
+                    disabled={!formData.procedure.pricingCategory || proceduresLoading}
+                    onChange={(e: any) => updateNestedField('procedure', 'name', e.target.value)}
+                    options={procedureOptions.map((p) => ({ label: p.name, value: p.name }))}
+                  />
+                  <Select label="Lugar (Clínica/Consultorio)" required error={errors['procedure.locationType']} value={formData.procedure.locationType} onChange={(e: any) => updateNestedField('procedure', 'locationType', e.target.value)} options={LOCATION_OPTIONS} />
                   <div className="col-span-1 md:col-span-2 mt-4"><hr className="border-white/10 mb-8" /></div>
                   
                   <Input label="Fecha de ingreso a sala" type="date" required error={errors['procedure.scheduledDate']} warning={isTimeWarning} value={formData.procedure.scheduledDate} onChange={(e: any) => updateNestedField('procedure', 'scheduledDate', e.target.value)} />
@@ -462,33 +609,16 @@ export function SolicitarPoliza() {
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <h1 className="font-serif text-3xl lg:text-5xl mb-8">Datos del paciente</h1>
                 
-                <div className="bg-white/5 p-4 border border-white/10 mb-8">
-                  <h4 className="text-xs tracking-widest text-bmq-gold mb-3 uppercase">Buscar Paciente Existente</h4>
-                  <input 
-                    type="text" 
-                    placeholder="Escriba documento o nombre..." 
-                    onChange={async (e) => {
-                      const val = e.target.value;
-                      if (val.length >= 3) {
-                        try {
-                          const res = await getJson<{data: any[]}>(`/patients?affiliation_id=${activeAffiliation?.id}&query=${val}`);
-                          if (res.data.length > 0) {
-                            const p = res.data[0];
-                            setFormData(prev => ({
-                              ...prev,
-                              patient: {
-                                fullName: `${p.first_name} ${p.last_name}`,
-                                documentType: p.document_type,
-                                documentNumber: p.document_number
-                              }
-                            }));
-                          }
-                        } catch (e) {}
-                      }
-                    }}
-                    className="w-full bg-bmq-black border border-white/10 p-3 text-bmq-ivory text-sm focus:border-bmq-gold outline-none transition-colors" 
-                  />
-                </div>
+                <PatientSearch
+                  affiliationId={activeAffiliation?.id}
+                  onSelect={(p) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      patient: { fullName: p.full_name, documentType: p.document_type, documentNumber: p.document_number },
+                    }));
+                    setErrors((prev) => ({ ...prev, 'patient.fullName': false, 'patient.documentType': false, 'patient.documentNumber': false }));
+                  }}
+                />
 
                 <div className="bg-bmq-blue/10 border-l border-bmq-blue p-6 mb-12">
                   <p className="text-sm text-bmq-ivory/80 font-light leading-relaxed">
