@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { pathname } = useLocation();
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,7 +34,7 @@ export function Header() {
     <motion.header 
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 1.5, delay: pathname === '/' ? 8.5 : 0, ease: "easeOut" }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.6, ease: "easeOut" }}
       className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-700 ${
         isScrolled || pathname !== '/' ? 'bg-bmq-black/95 backdrop-blur-md border-b border-white/5 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)]' : 'bg-transparent py-8'
       }`}
